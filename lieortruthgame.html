@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>― 嘘か真実か ― 真偽を見破れ マフィアの供述書</title>
+<style>
+  :root{
+    --bg:#0b0b0f; --panel:#13131a; --ink:#e7e7ea; --muted:#a7a7b3;
+    --accent:#b71c1c; --gold:#d0a900; --silver:#dbdbdb;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:radial-gradient(1200px 800px at 70% -10%, #2a0e14 0%, rgba(42,14,20,0) 60%), #0b0b0f;
+    color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  header{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(180deg,#0b0b10 0%, rgba(11,11,15,0.9) 100%);
+    border-bottom:1px solid #22242a; padding:10px 12px; display:flex; gap:12px; align-items:center;
+  }
+  header h1{margin:0; font-size:16px; letter-spacing:.04em; font-weight:700}
+  .room-badge{margin-left:auto; font-size:12px; color:var(--muted)}
+  main{display:grid; grid-template-columns: 1fr 340px; gap:14px; padding:14px; min-height:calc(100% - 56px)}
+  @media (max-width: 980px){ main{grid-template-columns: 1fr} .sidebar{order:-1} }
+
+  .panel{
+    background: linear-gradient(180deg, #121217 0%, #0e0e13 100%);
+    border:1px solid #1e1f27; border-radius:16px; box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  .arena{position:relative; overflow:hidden; min-height:520px; padding:16px}
+  .sidebar{padding:14px; display:flex; flex-direction:column; gap:14px}
+
+  .stack{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .gap{height:10px}
+
+  .btn{
+    background:#191921; border:1px solid #2a2b36; color:#fff; padding:10px 14px; border-radius:12px; cursor:pointer;
+    font-weight:600; transition:.15s; user-select:none;
+  }
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+  .btn.primary{background:linear-gradient(180deg,#b71c1c,#851010); border-color:#8b121a}
+  .btn.warning{background:linear-gradient(180deg,#2b2b36,#1c1c24); border-color:#3a3a47; color:#ffd8d8}
+  .field{display:flex; gap:8px; align-items:center}
+  input[type="number"], input[type="text"]{
+    background:#0f0f15; color:#fff; border:1px solid #242533; border-radius:10px; padding:8px 10px; outline:none;
+    min-width: 0;
+  }
+
+  /* ユーザー欄（右上） */
+  .users-panel{padding:12px}
+  .users-grid{display:grid; grid-template-columns: 1fr; gap:10px; max-height:260px; overflow:auto; padding-right:6px}
+  .user-chip{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:8px 10px; border:1px solid #222330; background:#12131a; border-radius:12px;
+  }
+  .who{display:flex; align-items:center; gap:10px}
+  .avatar{
+    width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:14px;
+    color:#fff; background:#2a2a35; border:1px solid #3a3a48; overflow:hidden; position:relative;
+  }
+  .avatar img{width:100%; height:100%; object-fit:cover}
+  .points{font-weight:700; color:var(--gold)}
+  .muted{color:var(--muted); font-size:12px}
+
+  /* 指示カード・供述書 */
+  .card{
+    margin:8px 0; border:1px dashed #414255; border-radius:14px; padding:14px; background:rgba(20,20,27,.6);
+  }
+  .card-title{font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--silver); font-size:13px}
+  .card-body{font-size:22px; font-weight:800; margin-top:6px}
+  .truth{color:#84e18a}
+  .lie{color:#ff7b7b}
+  .depo{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    background:#0b0b11; border:1px solid #2a2b3a; border-radius:12px; padding:14px; line-height:1.5;
+  }
+
+  /* 投票ボード */
+  .vote-grid{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:14px; margin-top:14px;
+  }
+  .vote-card{
+    background:#14141b; border:1px solid #2a2b36; border-radius:14px; padding:12px; text-align:center; cursor:pointer;
+    transition:.15s;
+  }
+  .vote-card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.35)}
+  .vote-card .avatar{width:56px; height:56px; margin:0 auto 6px}
+  .vote-count{font-size:12px; color:var(--muted)}
+
+  /* 演出：アイコン拡大＆被弾 */
+  .stage{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.4);
+    backdrop-filter: blur(4px); z-index:5;
+  }
+  .stage.show{display:flex}
+  .big-icon{position:relative; width:220px; height:220px; border-radius:50%; border:4px solid #3a3a48; overflow:hidden;
+    display:grid; place-items:center; background:#1a1a22; box-shadow:0 30px 90px rgba(0,0,0,.55)}
+  .big-icon img{width:100%; height:100%; object-fit:cover}
+  .bang{
+    position:absolute; width:34px; height:34px; background: radial-gradient(#ffea, #0000 60%), #a00;
+    border-radius:50%; transform: scale(0); animation: hit .8s forwards ease-out;
+    box-shadow: 0 0 24px #f005;
+  }
+  @keyframes hit{ 30%{transform:scale(1.4)} 100%{transform:scale(1)} }
+  .blackout{
+    position:absolute; inset:0; background:#000; display:none; align-items:center; justify-content:center; z-index:9;
+    animation: fadein 1s ease forwards;
+  }
+  @keyframes fadein{ from{opacity:0} to{opacity:1} }
+  .winner{
+    text-align:center;
+  }
+  .winner h2{font-size:24px; letter-spacing:.06em}
+  .winner .avatar{width:96px; height:96px; margin:16px auto 10px}
+  .hr{height:1px; background:#242533; margin:10px 0}
+  .tip{font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>― 嘘か真実か ― 真偽を見破れ：マフィアの供述書</h1>
+  <div class="room-badge">Room: <span id="roomLabel">default</span></div>
+</header>
+
+<main>
+  <section class="panel arena" id="arena">
+    <div class="stack">
+      <div class="field">
+        <label class="muted">ターン数</label>
+        <input id="turnInput" type="number" min="1" max="20" value="5" />
+        <button id="startBtn" class="btn primary">ゲーム開始</button>
+        <button id="nextBtn" class="btn" disabled>次のラウンド</button>
+      </div>
+      <div class="muted">ルール：嘘は常に1人 / 最大5人まで</div>
+    </div>
+
+    <div class="gap"></div>
+
+    <div id="myCard" class="card" style="display:none">
+      <div class="card-title">指示書 / INSTRUCTION</div>
+      <div class="card-body"><span id="roleText" class="truth">真実</span> を演じろ</div>
+      <div class="tip">※ あなたにだけ見える指示です</div>
+    </div>
+
+    <div id="deposition" class="card" style="display:none">
+      <div class="card-title">供述書 / DEPOSITION</div>
+      <div class="depo" id="depoText">……</div>
+      <div id="voteWait" class="muted" style="margin-top:8px">3秒後に投票が解禁されます…</div>
+    </div>
+
+    <div id="voteBoard" style="display:none">
+      <div class="hr"></div>
+      <div class="muted">嘘だと思う人物に投票せよ</div>
+      <div class="vote-grid" id="voteGrid"></div>
+    </div>
+
+    <div id="stage" class="stage">
+      <div class="big-icon" id="bigIcon"></div>
+    </div>
+
+    <div id="blackout" class="blackout">
+      <div class="winner" id="winnerPane">
+        <h2>今回の尋問王は…</h2>
+        <div class="avatar"><!-- winner icon --></div>
+        <div class="muted" id="winnerName"></div>
+      </div>
+    </div>
+
+    <audio id="seBullet" src="assets/bullet.mp3" preload="auto"></audio>
+  </section>
+
+  <aside class="panel sidebar">
+    <section class="panel users-panel">
+      <div class="muted" style="margin-bottom:6px">接続ユーザー / Users</div>
+      <div class="users-grid" id="usersGrid"></div>
+    </section>
+
+    <section class="panel" style="padding:12px">
+      <div class="muted">ゲーム状態</div>
+      <div id="stateBox" style="margin-top:6px; font-family:ui-monospace; font-size:12px; color:#cfcfe8"></div>
+    </section>
+
+    <section class="panel" style="padding:12px">
+      <div class="muted">メモ</div>
+      <ul style="margin:8px 0 0 18px; color:#c3c3d1; line-height:1.5">
+        <li>ルームURLを他メンバーに共有して参加</li>
+        <li>主催者が「ゲーム開始」→各ラウンドは誰でも「次のラウンド」実行可</li>
+        <li>同票は全員「疑われた者」扱い</li>
+      </ul>
+    </section>
+  </aside>
+</main>
+
+<!-- Firebase SDKs -->
+<script type="module">
+/* =============================
+   【必須】Firebase 設定を記入
+   1) https://console.firebase.google.com でプロジェクト作成
+   2) Realtime Database を「テストモード」で開始（後でルール調整）
+   3) 下記 config に Web アプリの構成情報を貼り付け
+   ============================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, get, push, serverTimestamp, onDisconnect, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCD9jSyuSdZrdl7y3IdAs3VHAsYvWaBjXg",
+  authDomain: "lieortruthgame.firebaseapp.com",
+  databaseURL: "https://lieortruthgame-default-rtdb.firebaseio.com",
+  projectId: "lieortruthgame",
+  appId: "1:715221315679:web:b7af7501376e4b2cab6bea"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+/* ============== ユーティリティ ============== */
+const qs = (s)=>document.querySelector(s);
+const qsa = (s)=>Array.from(document.querySelectorAll(s));
+const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+const ROOM = (new URL(location.href)).searchParams.get("room") || "default";
+qs("#roomLabel").textContent = ROOM;
+
+const uid = crypto.randomUUID();
+let myName = "";
+let myIconUrl = ""; // 名前紐づけ画像（このデモではイニシャルアイコンを自動生成）
+let myVote = null;
+let myRole = "truth"; // 'truth' | 'lie'
+let localUsers = {};  // uid -> user
+let localState = null;
+
+/* ============== 名前入力 ============== */
+async function promptName(){
+  let name = localStorage.getItem("maf_name") || "";
+  while(!name){
+    name = prompt("名前を入力してください（8文字まで）") || "";
+    name = name.trim().slice(0,8);
+  }
+  myName = name;
+  localStorage.setItem("maf_name", name);
+  // アイコン：DiceBearのイニシャルSVG（外部生成） or 自前生成
+  // 外部に依存したくない場合は、ここで背景色＋頭文字で擬似アイコンを作る
+  myIconUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&radius=50&backgroundType=gradientLinear&fontFamily=Roboto&fontWeight=700`;
+}
+await promptName();
+
+/* ============== ルーム構造 ==============
+
+rooms/{ROOM}/
+  users/{uid} : { name, icon, points, ts }
+  state : {
+    phase: 'idle'|'deal'|'depose'|'vote'|'reveal'|'end',
+    round: number,
+    totalRounds: number,
+    liarUid: string,
+    word: string,
+    votes: { [uid]: targetUid }
+  }
+  words/{autoId}: { text }
+
+========================================== */
+
+/* ============== 参加・Presence ============== */
+const roomRef = ref(db, `rooms/${ROOM}`);
+const usersRef = ref(db, `rooms/${ROOM}/users`);
+const stateRef = ref(db, `rooms/${ROOM}/state`);
+const wordsRef = ref(db, `rooms/${ROOM}/words`);
+
+async function join(){
+  const meRef = ref(db, `rooms/${ROOM}/users/${uid}`);
+  const init = { name: myName, icon: myIconUrl, points: 0, ts: Date.now() };
+  await set(meRef, init);
+  // 接続切断時に削除
+  onDisconnect(meRef).remove();
+}
+await join();
+
+/* 初期ワードが無ければいくつか投入（1回だけ動くように） */
+(async ()=>{
+  const snap = await get(wordsRef);
+  if(!snap.exists()){
+    const seeds = [
+      "罪深い夜の出来事", "一番隠している癖", "危険だと思うメンバー", "初めての嘘",
+      "任務での失敗談", "恋の弱点", "許せないこと", "秘密の趣味", "最大の敵", "恐れているもの"
+    ];
+    for(const t of seeds){ await push(wordsRef, {text:t}); }
+  }
+})();
+
+/* ============== UI 更新（ユーザー） ============== */
+onValue(usersRef, (s)=>{
+  localUsers = s.val() || {};
+  renderUsers();
+});
+
+function renderUsers(){
+  const box = qs("#usersGrid");
+  box.innerHTML = "";
+  Object.entries(localUsers).forEach(([id,u])=>{
+    const el = document.createElement("div");
+    el.className = "user-chip";
+    el.innerHTML = `
+      <div class="who">
+        <div class="avatar">${u.icon ? `<img src="${u.icon}" alt="">` : initials(u.name)}</div>
+        <div>
+          <div style="font-weight:700">${escapeHTML(u.name)}${id===uid?` <span class="muted">(you)</span>`:""}</div>
+          <div class="points"><span>${u.points||0}</span> pt</div>
+        </div>
+      </div>
+      <div class="muted">${short(id)}</div>
+    `;
+    box.appendChild(el);
+  });
+}
+
+function initials(name){
+  const ch = (name || "?").slice(0,2).toUpperCase();
+  return `<span>${ch}</span>`;
+}
+const short = (s)=>s.slice(0,4);
+const escapeHTML=(s)=>s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+
+/* ============== 状態購読 ============== */
+onValue(stateRef, (s)=>{
+  localState = s.val() || null;
+  updateStateUI();
+});
+
+function updateStateUI(){
+  const box = qs("#stateBox");
+  box.textContent = JSON.stringify(localState, null, 2) || "（待機中）";
+
+  const phase = localState?.phase || "idle";
+  const myAssign = (localState?.liarUid === uid) ? "lie" : "truth";
+  myRole = myAssign;
+
+  // フェーズ別表示
+  const myCard = qs("#myCard");
+  const roleText = qs("#roleText");
+  const depo = qs("#deposition");
+  const voteBoard = qs("#voteBoard");
+
+  myCard.style.display = (phase === "deal") ? "block" : "none";
+  roleText.textContent = (myRole === "lie" ? "嘘" : "真実");
+  roleText.className = (myRole === "lie" ? "lie" : "truth");
+
+  if(phase === "depose"){
+    depo.style.display = "block";
+    qs("#depoText").textContent = localState?.word || "……";
+    qs("#voteWait").style.display = "block";
+    voteBoard.style.display = "none";
+  }else if(phase === "vote"){
+    depo.style.display = "block";
+    qs("#voteWait").style.display = "none";
+    voteBoard.style.display = "block";
+    renderVoteGrid();
+  }else{
+    depo.style.display = "none";
+    voteBoard.style.display = "none";
+  }
+
+  // ボタン制御
+  qs("#startBtn").disabled = Object.keys(localUsers).length < 2 || phase !== "idle";
+  qs("#nextBtn").disabled = !(phase === "idle" || phase === "reveal") || !(localState?.round < (localState?.totalRounds || 0));
+
+  // ブラックアウト＆勝者
+  if(phase === "end"){ showWinner(); }
+}
+
+/* ============== ゲーム開始 / ラウンド進行 ============== */
+qs("#startBtn").addEventListener("click", async ()=>{
+  const total = clamp(parseInt(qs("#turnInput").value || "5",10), 1, 20);
+  const players = Object.keys(localUsers);
+  if(players.length < 2){ return alert("2人以上で開始してください"); }
+  if(players.length > 5){ return alert("5人までです"); }
+
+  await set(stateRef, {
+    phase: "idle",
+    round: 0,
+    totalRounds: total,
+    liarUid: null,
+    word: "",
+    votes: {}
+  });
+  await nextRound();
+});
+
+qs("#nextBtn").addEventListener("click", async ()=>{ await nextRound(); });
+
+async function nextRound(){
+  const users = Object.keys(localUsers);
+  if(users.length < 2){ return alert("プレイヤーが足りません"); }
+
+  // ラウンド数更新＆配役決定
+  const stSnap = await get(stateRef);
+  const prev = stSnap.val() || {};
+  const nextRoundNum = (prev.round || 0) + 1;
+  if(nextRoundNum > (prev.totalRounds || 1)){ return; }
+
+  const liarUid = users[Math.floor(Math.random()*users.length)];
+  await update(stateRef, {
+    phase: "deal",
+    round: nextRoundNum,
+    liarUid,
+    votes:{}
+  });
+
+  // 1. 指示カード表示 → 2. ワード抽選 → 3秒後に投票解禁
+  await sleep(1000);
+  const word = await pickWord();
+  await update(stateRef, { phase:"depose", word });
+  await sleep(3000);
+  await update(stateRef, { phase:"vote" });
+
+  // 投票タイムアウト：全員投票 or 40秒で自動確定
+  waitVoteAndReveal(40000);
+}
+
+async function pickWord(){
+  const snap = await get(wordsRef);
+  const list = [];
+  snap.forEach(ch=>{ const v=ch.val(); if(v?.text) list.push(v.text); });
+  if(list.length===0) return "供述ワード";
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+/* ============== 投票 ============== */
+function renderVoteGrid(){
+  const grid = qs("#voteGrid");
+  grid.innerHTML = "";
+  const votes = localState?.votes || {};
+  const counts = tallyVotes(votes);
+
+  Object.entries(localUsers).forEach(([id,u])=>{
+    const el = document.createElement("div");
+    el.className = "vote-card";
+    el.innerHTML = `
+      <div class="avatar">${u.icon ? `<img src="${u.icon}">` : initials(u.name)}</div>
+      <div style="font-weight:700">${escapeHTML(u.name)}</div>
+      <div class="vote-count">票：${counts[id]||0}</div>
+    `;
+    el.addEventListener("click", ()=> castVote(id));
+    grid.appendChild(el);
+  });
+}
+
+async function castVote(targetUid){
+  if(localState?.phase !== "vote") return;
+  if(!localUsers[targetUid]) return;
+  myVote = targetUid;
+  await update(stateRef, { [`votes/${uid}`]: targetUid });
+}
+
+function tallyVotes(votes){
+  const c = {};
+  Object.values(votes||{}).forEach(t=>{ c[t]=(c[t]||0)+1; });
+  return c;
+}
+
+/* ============== 集計＆演出＆スコア ============== */
+async function waitVoteAndReveal(timeoutMs){
+  const start = Date.now();
+  while(Date.now()-start < timeoutMs){
+    const votes = (await get(ref(db, `rooms/${ROOM}/state/votes`))).val() || {};
+    const haveAll = Object.keys(votes).length >= Object.keys(localUsers).length;
+    if(haveAll) break;
+    await sleep(800);
+  }
+  // 集計
+  const stateSnap = await get(stateRef); const st = stateSnap.val() || {};
+  const votes = st.votes || {};
+  const counts = tallyVotes(votes);
+  const max = Math.max(0, ...Object.values(counts));
+  const suspects = Object.keys(counts).filter(k=>counts[k]===max);
+  // 同票あり → その全員が「疑われた者」
+  await revealSequence(suspects[0] || Object.keys(localUsers)[0]); // 演出は代表者1名に
+  await scoreRound(st, counts, suspects);
+  // 次へ（最終なら end）
+  const isLast = st.round >= st.totalRounds;
+  if(isLast){
+    await update(stateRef, { phase:"end" });
+  }else{
+    await update(stateRef, { phase:"reveal" });
+  }
+}
+
+async function revealSequence(targetUid){
+  // 画面中央に容疑者アイコンを拡大→被弾演出→SE
+  const stage = qs("#stage");
+  const big = qs("#bigIcon");
+  big.innerHTML = "";
+  const u = localUsers[targetUid];
+  const av = document.createElement("div");
+  av.className="avatar";
+  av.style.width="100%"; av.style.height="100%";
+  if(u?.icon){ av.innerHTML = `<img src="${u.icon}">`; } else { av.innerHTML = initials(u?.name || "?"); }
+  big.appendChild(av);
+  stage.classList.add("show");
+  await sleep(600);
+
+  // 弾痕
+  const bang = document.createElement("div");
+  bang.className="bang";
+  bang.style.left = (100 + Math.random()*60)+"px";
+  bang.style.top  = (60 + Math.random()*80)+"px";
+  big.appendChild(bang);
+
+  // SE 再生（なければ無音）
+  const se = qs("#seBullet");
+  se.currentTime = 0; se.play().catch(()=>{});
+
+  await sleep(1400);
+  stage.classList.remove("show");
+}
+
+async function scoreRound(st, counts, suspects){
+  const liarUid = st.liarUid;
+  const votes = st.votes || {};
+  const updates = {};
+
+  const users = Object.keys(localUsers);
+  const votedForLiar = Object.entries(votes).filter(([voter,t])=>t===liarUid).map(([v])=>v);
+  const everyoneMissed = (votedForLiar.length === 0);
+
+  // 基本：全員 points 取得のために現在値を読み、差分＋＝
+  for(const id of users){ updates[`rooms/${ROOM}/users/${id}/points`] = (localUsers[id].points || 0); }
+
+  // 『疑われた者』：最多得票（同票は全員）
+  for(const s of suspects){ updates[`rooms/${ROOM}/users/${s}/points`] -= 1; }
+
+  // 嘘をついていた人
+  if(everyoneMissed){ updates[`rooms/${ROOM}/users/${liarUid}/points`] += 2; }
+  if(!suspects.includes(liarUid)){ updates[`rooms/${ROOM}/users/${liarUid}/points`] += 1; }
+
+  // 嘘を見抜いた人：+1
+  for(const voter of Object.keys(votes)){
+    if(votes[voter] === liarUid){
+      updates[`rooms/${ROOM}/users/${voter}/points`] += 1;
+    }
+  }
+
+  // 反映
+  await update(ref(db), updates);
+}
+
+/* ============== 勝者表示 ============== */
+async function showWinner(){
+  // ブラックアウト
+  const blackout = qs("#blackout");
+  blackout.style.display = "flex";
+  await sleep(600);
+
+  // 勝者計算
+  const snap = await get(usersRef);
+  const users = snap.val() || {};
+  let maxPt = -1, champs = [];
+  Object.entries(users).forEach(([id,u])=>{
+    const p = u.points || 0;
+    if(p > maxPt){ maxPt = p; champs = [[id,u]]; }
+    else if(p === maxPt){ champs.push([id,u]); }
+  });
+
+  const pane = qs("#winnerPane");
+  const av = pane.querySelector(".avatar");
+  const name = qs("#winnerName");
+  av.innerHTML = champs[0][1].icon ? `<img src="${champs[0][1].icon}">` : initials(champs[0][1].name);
+  name.textContent = champs.length>1
+    ? `${champs.map(([,u])=>u.name).join("、")}（同率 ${maxPt}pt）`
+    : `${champs[0][1].name}（${maxPt}pt）`;
+}
+
+/* ============== 便利関数 ============== */
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+
+/* ============== イベント：ページ離脱 ============== */
+window.addEventListener("beforeunload", ()=>{ /* onDisconnect で削除されます */ });
+
+/* ============== 3秒後に投票ボタン表示（各クライアントで制御） ============== */
+onValue(stateRef, (s)=>{
+  const st = s.val() || {};
+  if(st.phase === "depose"){
+    // すでに3秒後に vote に遷移は「サーバ側」でやっているが、
+    // UI側は投票の有効化をローカルで出す（投票ボタンはvoteフェーズで出る）
+    qs("#voteWait").style.display = "block";
+  }
+  if(st.phase === "vote"){
+    qs("#voteWait").style.display = "none";
+  }
+});
+
+</script>
+</body>
+</html>
